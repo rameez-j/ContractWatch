@@ -1,0 +1,52 @@
+version: '3.8'
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=contractwatch
+    ports: 
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  nats:
+    image: nats-streaming:0.25
+    command: ["-p", "4222", "-m", "8222", "-store", "file", "-dir", "/data/stan"]
+    ports: 
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats_data:/data/stan
+
+  api:
+    build: ./packages/api
+    depends_on: 
+      - postgres
+      - nats
+    environment:
+      - DATABASE_URL=postgres://postgres:secret@postgres:5432/contractwatch
+      - NATS_URL=nats://nats:4222
+    ports: 
+      - "3000:3000"
+    volumes:
+      - ./packages/api:/app
+      - /app/node_modules
+
+  worker:
+    build: ./packages/worker
+    depends_on: 
+      - postgres
+      - nats
+    environment:
+      - DATABASE_URL=postgres://postgres:secret@postgres:5432/contractwatch
+      - NATS_URL=nats://nats:4222
+      - ALCHEMY_KEY=your-key
+      - NETWORKS=eth_mainnet,sepolia,polygon,arbitrum
+    volumes:
+      - ./packages/worker:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  nats_data: 
