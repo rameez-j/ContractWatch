@@ -18,6 +18,7 @@ This monorepo contains:
 - Docker & Docker Compose
 - PNPM package manager
 - Alchemy API key
+- 1Password CLI (optional, for secure environment setup)
 
 ### Installation
 
@@ -25,8 +26,6 @@ This monorepo contains:
 ```bash
 git clone <repo-url>
 cd contractwatch
-cp .env.example .env
-# Edit .env with your Alchemy API key
 ```
 
 2. **Install dependencies**:
@@ -34,12 +33,26 @@ cp .env.example .env
 pnpm install
 ```
 
-3. **Start infrastructure**:
+3. **Setup environment variables**:
+
+**Option A: Using 1Password (Recommended)**
+```bash
+# Setup your 1Password item first (see scripts/1password-setup.md)
+pnpm setup-env
+```
+
+**Option B: Manual setup**
+```bash
+cp .env.example .env
+# Edit .env with your actual values
+```
+
+4. **Start infrastructure**:
 ```bash
 docker compose up -d postgres nats
 ```
 
-4. **Start services**:
+5. **Start services**:
 ```bash
 # Terminal 1: API
 pnpm --filter api dev
@@ -51,18 +64,29 @@ pnpm --filter worker dev
 pnpm --filter web dev
 ```
 
-5. **Open dashboard**:
+6. **Open dashboard**:
 ```
 http://localhost:3001
 ```
 
-## Environment Variables
+## Environment Setup
+
+### 🔐 1Password Integration (Recommended)
+
+For secure secret management, use the included 1Password integration:
+
+1. **Setup 1Password item**: Follow the guide in [`scripts/1password-setup.md`](scripts/1password-setup.md)
+2. **Run setup script**: `pnpm setup-env`
+
+This will securely pull all secrets from your 1Password vault and create the `.env` file.
+
+### 📝 Manual Setup
 
 Create a `.env` file in the root directory:
 
 ```env
 # Database
-DATABASE_URL=postgres://postgres:secret@localhost:5432/contractwatch
+DATABASE_URL=postgres://postgres:secret@localhost:5433/contractwatch
 
 # NATS
 NATS_URL=nats://localhost:4222
@@ -121,6 +145,9 @@ contractwatch/
 │   ├── api/          # Fastify + tRPC backend
 │   ├── worker/       # Blockchain scanner
 │   └── web/          # Next.js frontend
+├── scripts/
+│   ├── setup-env.sh       # 1Password environment setup
+│   └── 1password-setup.md # 1Password configuration guide
 ├── docker-compose.yml
 ├── package.json
 └── README.md
@@ -157,6 +184,27 @@ CREATE TABLE deployments (
 - Polygon (`polygon`)
 - Arbitrum (`arbitrum`)
 
+### Available Scripts
+
+```bash
+# Environment setup
+pnpm setup-env              # Setup .env from 1Password
+
+# Development
+pnpm dev                     # Start all services
+pnpm --filter api dev        # Start API only
+pnpm --filter worker dev     # Start worker only
+pnpm --filter web dev        # Start web only
+
+# Building
+pnpm build                   # Build all packages
+pnpm test                    # Run all tests
+
+# Code quality
+pnpm lint                    # Lint all code
+pnpm format                  # Format all code
+```
+
 ### Testing
 
 ```bash
@@ -190,12 +238,20 @@ For production deployment:
 3. Set environment variables for production
 4. Deploy using Docker Compose or Kubernetes
 
+## Security
+
+- 🔒 Environment variables are managed via 1Password
+- 🔑 JWT authentication for API access
+- 👥 Rate limiting on API endpoints
+- 🔐 Secure WebSocket connections
+- 📝 Audit logging for all operations
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests
+4. Run tests and linting
 5. Submit a pull request
 
 ## License
