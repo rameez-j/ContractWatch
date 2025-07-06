@@ -1,3 +1,8 @@
+import dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config({ path: "../../.env" });
+
 import { ethers } from "ethers";
 import { connect as connectNats } from "nats";
 import { Client } from "pg";
@@ -19,12 +24,20 @@ async function main() {
     // Initialize connections
     logger.info("Initializing connections...");
     
+    // Log environment variables for debugging (without exposing the key)
+    logger.info("Environment check:", {
+      hasAlchemyKey: !!process.env.ALCHEMY_KEY,
+      networks: process.env.NETWORKS || "sepolia",
+      databaseUrl: process.env.DATABASE_URL ? "configured" : "missing",
+      natsUrl: process.env.NATS_URL || "nats://localhost:4222"
+    });
+    
     const nats = await connectNats({ 
       servers: process.env.NATS_URL || "nats://localhost:4222" 
     });
     
     const pg = new Client({ 
-      connectionString: process.env.DATABASE_URL || "postgres://postgres:secret@localhost:5432/contractwatch"
+      connectionString: process.env.DATABASE_URL || "postgres://postgres:secret@localhost:5433/contractwatch"
     });
     await pg.connect();
     
@@ -104,12 +117,22 @@ async function startNetworkMonitoring(network: string, nats: any, pg: Client) {
     try {
       logger.debug(`New block ${blockNum} on ${network}`);
       
-      const block = await provider.getBlockWithTransactions(blockNum);
+      // Get the block with transaction hashes first
+      const block = await provider.getBlock(blockNum);
+      if (!block || !block.transactions.length) {
+        return;
+      }
       
-      for (const tx of block.transactions) {
-        // Check if this is a contract deployment (tx.to is null)
-        if (!tx.to) {
-          await processContractDeployment(tx, network, nats, pg, provider);
+      // Process each transaction hash to get full transaction details
+      for (const txHash of block.transactions) {
+        try {
+          const tx = await provider.getTransaction(txHash);
+          if (tx && !tx.to) {
+            // This is a contract deployment (tx.to is null)
+            await processContractDeployment(tx, network, nats, pg, provider);
+          }
+        } catch (txError) {
+          logger.debug(`Error fetching transaction ${txHash}:`, txError);
         }
       }
     } catch (error) {

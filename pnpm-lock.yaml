@@ -59,6 +59,9 @@ importers:
       bcryptjs:
         specifier: ^2.4.3
         version: 2.4.3
+      dotenv:
+        specifier: ^16.3.1
+        version: 16.3.1
       fastify:
         specifier: ^4.21.0
         version: 4.21.0
@@ -178,6 +181,9 @@ importers:
       commander:
         specifier: ^11.0.0
         version: 11.0.0
+      dotenv:
+        specifier: ^16.3.1
+        version: 16.3.1
       ethers:
         specifier: ^6.7.1
         version: 6.7.1
@@ -2682,6 +2688,11 @@ packages:
     dependencies:
       esutils: 2.0.3
     dev: true
+
+  /dotenv@16.3.1:
+    resolution: {integrity: sha512-IPzF4w4/Rd94bA9imS68tZBaYyBWSCE47V1RGuMrB94iyTOIEwRmVL2x/4An+6mETpLrKJ5hQkB8W4kFAadeIQ==}
+    engines: {node: '>=12'}
+    dev: false
 
   /dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}

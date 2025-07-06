@@ -23,7 +23,8 @@
     "pino-pretty": "^10.0.0",
     "nanoid": "^4.0.2",
     "bcryptjs": "^2.4.3",
-    "aws-sdk": "^2.1415.0"
+    "aws-sdk": "^2.1415.0",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.4.2",

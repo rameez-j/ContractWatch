@@ -5,6 +5,7 @@ import { trpc } from '@/utils/trpc';
 import { Plus, Wallet, Activity, Trash2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { AddWalletModal } from '@/components/AddWalletModal';
+import { WalletDetailsModal } from '@/components/WalletDetailsModal';
 import { format } from 'date-fns';
 
 export default function Dashboard() {
@@ -17,7 +18,7 @@ export default function Dashboard() {
       toast.success('Wallet removed successfully');
       refetch();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Failed to remove wallet: ${error.message}`);
     },
   });
@@ -26,6 +27,10 @@ export default function Dashboard() {
     if (confirm('Are you sure you want to stop monitoring this wallet?')) {
       removeWalletMutation.mutate({ address });
     }
+  };
+
+  const handleViewDetails = (address: string) => {
+    setSelectedWallet(address);
   };
 
   if (isLoading) {
@@ -75,7 +80,7 @@ export default function Dashboard() {
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-500">Total Deployments</p>
               <p className="text-2xl font-bold text-gray-900">
-                {wallets?.wallets?.reduce((sum, w) => sum + (w.deployment_count || 0), 0) || 0}
+                {wallets?.wallets?.reduce((sum: number, w: any) => sum + (w.deployment_count || 0), 0) || 0}
               </p>
             </div>
           </div>
@@ -117,7 +122,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {wallets?.wallets?.map((wallet) => (
+            {wallets?.wallets?.map((wallet: any) => (
               <div key={wallet.id} className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
@@ -146,7 +151,7 @@ export default function Dashboard() {
                     
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => setSelectedWallet(wallet.address)}
+                        onClick={() => handleViewDetails(wallet.address)}
                         className="btn-secondary text-sm"
                       >
                         View Details
@@ -176,6 +181,15 @@ export default function Dashboard() {
           setIsAddModalOpen(false);
         }}
       />
+
+      {/* Wallet Details Modal */}
+      {selectedWallet && (
+        <WalletDetailsModal
+          isOpen={!!selectedWallet}
+          onClose={() => setSelectedWallet(null)}
+          walletAddress={selectedWallet}
+        />
+      )}
     </div>
   );
 } 

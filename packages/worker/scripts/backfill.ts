@@ -1,5 +1,10 @@
 #!/usr/bin/env ts-node
 
+import dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config({ path: "../../.env" });
+
 import { ethers } from "ethers";
 import { Client } from "pg";
 import { Command } from "commander";
@@ -17,7 +22,7 @@ interface BackfillOptions {
 async function backfillDeployments(options: BackfillOptions) {
   const provider = new ethers.JsonRpcProvider(getProviderUrl(options.network));
   const pg = new Client({
-    connectionString: process.env.DATABASE_URL || "postgres://postgres:secret@localhost:5432/contractwatch",
+    connectionString: process.env.DATABASE_URL || "postgres://postgres:secret@localhost:5433/contractwatch",
   });
   await pg.connect();
 
@@ -41,61 +46,64 @@ async function backfillDeployments(options: BackfillOptions) {
 
     logger.info(`Scanning blocks ${fromBlock} to ${toBlock}`);
 
-    // Get all transactions from the wallet
-    const logs = await provider.getLogs({
-      fromBlock: fromBlock,
-      toBlock: toBlock,
-      address: null, // All addresses
-      topics: [], // All topics
-    });
-
+    // Scan each block for transactions from the wallet
     let processedCount = 0;
     let deploymentCount = 0;
 
-    for (const log of logs) {
+    for (let blockNum = fromBlock; blockNum <= toBlock; blockNum++) {
       try {
-        const receipt = await provider.getTransactionReceipt(log.transactionHash);
-        
-        if (receipt && receipt.contractAddress && receipt.from.toLowerCase() === options.wallet.toLowerCase()) {
-          // This is a contract deployment from our watched wallet
-          const block = await provider.getBlock(receipt.blockNumber);
-          
-          if (block) {
-            const timestamp = new Date(block.timestamp * 1000);
-            
-            // Check if we already have this deployment
-            const existingDeployment = await pg.query(
-              "SELECT id FROM deployments WHERE tx_hash = $1",
-              [receipt.hash]
-            );
+        const block = await provider.getBlock(blockNum, true);
+        if (!block || !block.transactions.length) {
+          continue;
+        }
 
-            if (existingDeployment.rowCount === 0) {
-              // Insert new deployment
-              await pg.query(
-                `INSERT INTO deployments (ts, wallet_id, network, contract_address, tx_hash, gas_used)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [
-                  timestamp,
-                  walletId,
-                  options.network,
-                  receipt.contractAddress,
-                  receipt.hash,
-                  receipt.gasUsed.toString(),
-                ]
-              );
+        for (const txHash of block.transactions) {
+          try {
+            const tx = await provider.getTransaction(txHash);
+            if (tx && tx.from.toLowerCase() === options.wallet.toLowerCase() && !tx.to) {
+              // This is a contract deployment from our watched wallet
+              const receipt = await provider.getTransactionReceipt(tx.hash);
               
-              deploymentCount++;
-              logger.info(`Added deployment: ${receipt.contractAddress} (tx: ${receipt.hash})`);
+              if (receipt && receipt.contractAddress) {
+                const timestamp = new Date(block.timestamp * 1000);
+                
+                // Check if we already have this deployment
+                const existingDeployment = await pg.query(
+                  "SELECT id FROM deployments WHERE tx_hash = $1",
+                  [receipt.hash]
+                );
+
+                if (existingDeployment.rowCount === 0) {
+                  // Insert new deployment
+                  await pg.query(
+                    `INSERT INTO deployments (ts, wallet_id, network, contract_address, tx_hash, gas_used)
+                     VALUES ($1, $2, $3, $4, $5, $6)`,
+                    [
+                      timestamp,
+                      walletId,
+                      options.network,
+                      receipt.contractAddress,
+                      receipt.hash,
+                      receipt.gasUsed.toString(),
+                    ]
+                  );
+                  
+                  deploymentCount++;
+                  logger.info(`Added deployment: ${receipt.contractAddress} (tx: ${receipt.hash})`);
+                }
+              }
             }
+          } catch (txError) {
+            logger.debug(`Error processing transaction ${txHash}:`, txError);
           }
         }
-      } catch (error) {
-        logger.error(`Error processing log ${log.transactionHash}:`, error);
+      } catch (blockError) {
+        logger.error(`Error processing block ${blockNum}:`, blockError);
       }
       
       processedCount++;
       if (processedCount % 100 === 0) {
-        logger.info(`Processed ${processedCount}/${logs.length} logs`);
+        logger.info(`Processed ${processedCount}/${toBlock - fromBlock + 1} blocks`);
       }
     }
 

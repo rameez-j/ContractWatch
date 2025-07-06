@@ -3,6 +3,9 @@
   "private": true,
   "scripts": {
     "setup-env": "./scripts/setup-env.sh",
+    "dev:api": "pnpm --filter api dev",
+    "dev:worker": "pnpm --filter worker dev",
+    "dev:web": "pnpm --filter web dev",
     "dev": "pnpm --filter api dev & pnpm --filter worker dev & pnpm --filter web dev",
     "build": "pnpm --filter api build && pnpm --filter worker build && pnpm --filter web build",
     "test": "pnpm --recursive test",

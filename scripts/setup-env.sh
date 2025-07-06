@@ -38,10 +38,15 @@ echo -e "${GREEN}✅ 1Password CLI is available and signed in${NC}"
 get_secret() {
     local field_name="$1"
     local default_value="$2"
+    local reveal_flag="$3"  # Add reveal flag parameter
     
     # Try to get the field value from 1Password
     local value
-    value=$(op item get "$ITEM" --vault "$VAULT" --fields "$field_name" 2>/dev/null || echo "")
+    if [ "$reveal_flag" = "true" ]; then
+        value=$(op item get "$ITEM" --vault "$VAULT" --fields "$field_name" --reveal 2>/dev/null || echo "")
+    else
+        value=$(op item get "$ITEM" --vault "$VAULT" --fields "$field_name" 2>/dev/null || echo "")
+    fi
     
     if [ -z "$value" ]; then
         if [ -n "$default_value" ]; then
@@ -56,23 +61,23 @@ get_secret() {
 
 echo -e "${YELLOW}📋 Retrieving secrets from 1Password...${NC}"
 
-# Get secrets from 1Password
-ALCHEMY_KEY=$(get_secret "ALCHEMY_KEY" "")
-JWT_SECRET=$(get_secret "JWT_SECRET" "$(openssl rand -base64 32)")
-DATABASE_URL=$(get_secret "DATABASE_URL" "postgres://postgres:secret@localhost:5433/contractwatch")
-NATS_URL=$(get_secret "NATS_URL" "nats://localhost:4222")
-NETWORKS=$(get_secret "NETWORKS" "sepolia")
-LOG_LEVEL=$(get_secret "LOG_LEVEL" "info")
-CORS_ORIGIN=$(get_secret "CORS_ORIGIN" "http://localhost:3001")
+# Get secrets from 1Password (using --reveal for password fields)
+ALCHEMY_KEY=$(get_secret "ALCHEMY_KEY" "" "true")
+JWT_SECRET=$(get_secret "JWT_SECRET" "$(openssl rand -base64 32)" "true")
+DATABASE_URL=$(get_secret "DATABASE_URL" "postgres://postgres:secret@localhost:5433/contractwatch" "false")
+NATS_URL=$(get_secret "NATS_URL" "nats://localhost:4222" "false")
+NETWORKS=$(get_secret "NETWORKS" "sepolia" "false")
+LOG_LEVEL=$(get_secret "LOG_LEVEL" "info" "false")
+CORS_ORIGIN=$(get_secret "CORS_ORIGIN" "http://localhost:3001" "false")
 
-# AWS SES credentials (optional)
-AWS_ACCESS_KEY_ID=$(get_secret "AWS_ACCESS_KEY_ID" "")
-AWS_SECRET_ACCESS_KEY=$(get_secret "AWS_SECRET_ACCESS_KEY" "")
-AWS_REGION=$(get_secret "AWS_REGION" "us-east-1")
-FROM_EMAIL=$(get_secret "FROM_EMAIL" "noreply@contractwatch.com")
+# AWS SES credentials (optional) - using reveal for secret key
+AWS_ACCESS_KEY_ID=$(get_secret "AWS_ACCESS_KEY_ID" "" "false")
+AWS_SECRET_ACCESS_KEY=$(get_secret "AWS_SECRET_ACCESS_KEY" "" "true")
+AWS_REGION=$(get_secret "AWS_REGION" "us-east-1" "false")
+FROM_EMAIL=$(get_secret "FROM_EMAIL" "noreply@contractwatch.com" "false")
 
-# Discord webhook (optional)
-DISCORD_WEBHOOK_URL=$(get_secret "DISCORD_WEBHOOK_URL" "")
+# Discord webhook (optional) - using reveal for webhook URL
+DISCORD_WEBHOOK_URL=$(get_secret "DISCORD_WEBHOOK_URL" "" "true")
 
 # Create .env file
 echo -e "${YELLOW}📝 Creating .env file...${NC}"
@@ -118,6 +123,8 @@ if [ -z "$ALCHEMY_KEY" ] || [ "$ALCHEMY_KEY" = "your-alchemy-api-key-here" ]; th
     echo -e "${RED}⚠️  WARNING: ALCHEMY_KEY is missing or using default value${NC}"
     echo "Please add your Alchemy API key to the 'ALCHEMY_KEY' field in 1Password"
     echo "Vault: $VAULT, Item: $ITEM"
+else
+    echo -e "${GREEN}✅ ALCHEMY_KEY is set${NC}"
 fi
 
 if [ -z "$JWT_SECRET" ]; then

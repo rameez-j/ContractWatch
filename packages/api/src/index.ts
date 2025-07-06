@@ -1,3 +1,8 @@
+import dotenv from "dotenv";
+
+// Load environment variables from .env file
+dotenv.config({ path: "../../.env" });
+
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
 import fastifyCors from "@fastify/cors";
@@ -38,7 +43,7 @@ async function start() {
 
     // Initialize database connection
     const db = new Client({
-      connectionString: process.env.DATABASE_URL || "postgres://postgres:secret@localhost:5432/contractwatch",
+      connectionString: process.env.DATABASE_URL || "postgres://postgres:secret@localhost:5433/contractwatch",
     });
     await db.connect();
 
