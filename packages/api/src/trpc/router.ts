@@ -9,18 +9,19 @@ export const appRouter = t.router({
   addWallet: t.procedure
     .input(z.object({
       address: z.string().min(42).max(42), // Ethereum address length
+      name: z.string().optional(),
       userId: z.string().uuid().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const addr = input.address.toLowerCase();
       
       try {
-        // Insert wallet if not exists
+        // Insert wallet if not exists, update name if provided
         await ctx.db.query(
-          `INSERT INTO wallets (id, user_id, address, created_at) 
-           VALUES (uuid_generate_v4(), $1, $2, NOW()) 
-           ON CONFLICT (address) DO NOTHING`,
-          [input.userId || null, addr]
+          `INSERT INTO wallets (id, user_id, address, name, created_at) 
+           VALUES (uuid_generate_v4(), $1, $2, $3, NOW()) 
+           ON CONFLICT (address) DO UPDATE SET name = $3`,
+          [input.userId || null, addr, input.name || null]
         );
 
         // Publish wallet added event
@@ -85,6 +86,7 @@ export const appRouter = t.router({
           `SELECT 
             id,
             address,
+            name,
             created_at,
             (SELECT COUNT(*) FROM deployments WHERE wallet_id = wallets.id) as deployment_count
            FROM wallets 
@@ -98,6 +100,51 @@ export const appRouter = t.router({
         };
       } catch (error) {
         throw new Error(`Failed to fetch wallets: ${error}`);
+      }
+    }),
+
+  // Get detailed wallet information
+  getWalletDetails: t.procedure
+    .input(z.object({
+      id: z.string().uuid(),
+    }))
+    .query(async ({ ctx, input }) => {
+      try {
+        // Get wallet details
+        const walletResult = await ctx.db.query(
+          `SELECT id, address, name, created_at FROM wallets WHERE id = $1`,
+          [input.id]
+        );
+
+        if (walletResult.rows.length === 0) {
+          throw new Error("Wallet not found");
+        }
+
+        const wallet = walletResult.rows[0];
+
+        // Get deployment statistics
+        const deploymentResult = await ctx.db.query(
+          `SELECT COUNT(*) as count, COALESCE(SUM(gas_used), 0) as total_gas 
+           FROM deployments WHERE wallet_id = $1`,
+          [input.id]
+        );
+
+        // Get recent deployments
+        const recentDeployments = await ctx.db.query(
+          `SELECT * FROM deployments WHERE wallet_id = $1 ORDER BY ts DESC LIMIT 10`,
+          [input.id]
+        );
+
+        return {
+          wallet,
+          stats: {
+            deployments: parseInt(deploymentResult.rows[0].count),
+            totalGas: parseInt(deploymentResult.rows[0].total_gas)
+          },
+          recentDeployments: recentDeployments.rows
+        };
+      } catch (error) {
+        throw new Error(`Failed to get wallet details: ${error}`);
       }
     }),
 

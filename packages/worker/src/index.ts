@@ -76,6 +76,7 @@ async function initializeDatabase(pg: Client) {
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       user_id UUID,
       address TEXT NOT NULL UNIQUE,
+      name TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     );
     

@@ -25,6 +25,15 @@ export function WalletDetailsModal({ isOpen, onClose, walletAddress }: WalletDet
     { enabled: isOpen && !!walletAddress }
   );
 
+  // Get wallet details including name
+  const { data: walletDetails } = trpc.getWallets.useQuery(
+    {},
+    { enabled: isOpen && !!walletAddress }
+  );
+
+  // Find the specific wallet in the list
+  const currentWallet = walletDetails?.wallets?.find(w => w.address.toLowerCase() === walletAddress.toLowerCase());
+
   // Set up real-time updates via WebSocket
   useEffect(() => {
     if (!isOpen || !walletAddress) return;
@@ -82,25 +91,23 @@ export function WalletDetailsModal({ isOpen, onClose, walletAddress }: WalletDet
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
-              <Wallet className="h-6 w-6 text-primary-600 mr-3" />
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900">Wallet Details</h3>
-                <div className="flex items-center mt-1">
-                  <span className="text-sm text-gray-500 mr-2">{formatAddress(walletAddress)}</span>
-                  <button
-                    onClick={() => copyToClipboard(walletAddress)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                </div>
+              <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="ml-3">
+                <h2 className="text-xl font-bold text-gray-900">
+                  {currentWallet?.name || 'Wallet Details'}
+                </h2>
+                <p className="text-sm text-gray-500 font-mono">
+                  {walletAddress}
+                </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-md p-1"
+              className="text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <X className="h-5 w-5" />
+              <X className="h-6 w-6" />
             </button>
           </div>
 

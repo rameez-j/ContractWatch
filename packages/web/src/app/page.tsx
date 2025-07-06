@@ -2,15 +2,23 @@
 
 import { useState } from 'react';
 import { trpc } from '@/utils/trpc';
-import { Plus, Wallet, Activity, Trash2 } from 'lucide-react';
+import { Plus, Wallet, Activity } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { AddWalletModal } from '@/components/AddWalletModal';
+import { EditWalletModal } from '@/components/EditWalletModal';
 import { WalletDetailsModal } from '@/components/WalletDetailsModal';
 import { format } from 'date-fns';
+import { WalletActionsDropdown } from '@/components/WalletActionsDropdown';
 
 export default function Dashboard() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<string | null>(null);
+  const [editingWallet, setEditingWallet] = useState<{
+    id: string;
+    address: string;
+    name?: string;
+  } | null>(null);
 
   const { data: wallets, isLoading, refetch } = trpc.getWallets.useQuery({});
   const removeWalletMutation = trpc.removeWallet.useMutation({
@@ -27,6 +35,15 @@ export default function Dashboard() {
     if (confirm('Are you sure you want to stop monitoring this wallet?')) {
       removeWalletMutation.mutate({ address });
     }
+  };
+
+  const handleEditWallet = (wallet: any) => {
+    setEditingWallet({
+      id: wallet.id,
+      address: wallet.address,
+      name: wallet.name
+    });
+    setIsEditModalOpen(true);
   };
 
   const handleViewDetails = (address: string) => {
@@ -132,9 +149,12 @@ export default function Dashboard() {
                       </div>
                       <div className="ml-3">
                         <p className="text-sm font-medium text-gray-900 truncate">
+                          {wallet.name || `Wallet ${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}`}
+                        </p>
+                        <p className="text-sm text-gray-500 truncate">
                           {wallet.address}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs text-gray-400">
                           Added {format(new Date(wallet.created_at), 'MMM dd, yyyy')}
                         </p>
                       </div>
@@ -149,21 +169,13 @@ export default function Dashboard() {
                       <p className="text-xs text-gray-500">Deployments</p>
                     </div>
                     
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleViewDetails(wallet.address)}
-                        className="btn-secondary text-sm"
-                      >
-                        View Details
-                      </button>
-                      <button
-                        onClick={() => handleRemoveWallet(wallet.address)}
-                        className="btn-danger text-sm"
-                        disabled={removeWalletMutation.isLoading}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                    <WalletActionsDropdown
+                      wallet={wallet}
+                      onEdit={handleEditWallet}
+                      onView={handleViewDetails}
+                      onRemove={handleRemoveWallet}
+                      isRemoving={removeWalletMutation.isLoading}
+                    />
                   </div>
                 </div>
               </div>
@@ -180,6 +192,21 @@ export default function Dashboard() {
           refetch();
           setIsAddModalOpen(false);
         }}
+      />
+
+      {/* Edit Wallet Modal */}
+      <EditWalletModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingWallet(null);
+        }}
+        onSuccess={() => {
+          refetch();
+          setIsEditModalOpen(false);
+          setEditingWallet(null);
+        }}
+        wallet={editingWallet}
       />
 
       {/* Wallet Details Modal */}
