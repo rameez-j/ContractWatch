@@ -1,6 +1,6 @@
 # ContractWatch MVP
 
-A real-time smart contract deployment monitoring system built with a modern stack.
+A real-time smart contract deployment monitoring system.
 
 ## Architecture
 
